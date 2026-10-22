@@ -1,15 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"log"
 	"time"
 
 	"github.com/konlanbuilds/hoard/p2p"
 )
 
-func main() {
+func makeServer(listenAddr string, nodes ...string) *FileServer {
 	tcpTransportOpts := p2p.TCPTransportOpts{
-		ListenAddr:    ":3000",
+		ListenAddr:    listenAddr,
 		HandshakeFunc: p2p.NOPHandshakeFunc,
 		Decoder:       p2p.DefaultDecoder{},
 		// TODO: onPeer func
@@ -17,20 +18,33 @@ func main() {
 
 	tcpTransport := p2p.NewTCPTransport(tcpTransportOpts)
 	fileServerOptions := FileServerOptions{
-		StorageRoot:       "hoard_3000_network",
+		StorageRoot:       "hoard_" + listenAddr + "_network",
 		PathTransformFunc: CASPathTransformFunc,
 		Transport:         tcpTransport,
+		BootstrapNodes:    nodes,
 	}
 
-	s := NewFileServer(fileServerOptions)
+	fs := NewFileServer(fileServerOptions)
+
+	tcpTransport.OnPeer = fs.OnPeer
+	return fs
+}
+
+func main() {
+	fs1 := makeServer(":3000", "")
+	fs2 := makeServer(":4000", ":3000")
 
 	go func() {
-		time.Sleep(time.Second * 3)
-		s.Quit()
+		log.Fatal(fs1.Start())
 	}()
 
-	if err := s.Start(); err != nil {
-		log.Fatal(err)
-	}
+	time.Sleep(1 * time.Second)
 
+	go fs2.Start()
+	time.Sleep(1 * time.Second)
+
+	data := bytes.NewReader([]byte("Large data file!\n"))
+
+	fs2.StoreData("mydata", data)
+	select {}
 }
