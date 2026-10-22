@@ -1,0 +1,6 @@
+{
+    "editor.autoClosingDelete": "auto",
+    "editor.formatOnSave": true,
+    "files.autoSave": "afterDelay",
+    "editor.defaultFormatter": "golang.go"
+}

@@ -2,16 +2,65 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"testing"
 )
 
+func TestTransFormFunc(t *testing.T) {
+	key := "momsbestpictures"
+	pathKey := CASPathTransformFunc(key)
+	expectedFileame := "52439f5e49ba33b4b9b2373dcd6bfc9e97cafb7f"
+	expectedPathName := "52439/f5e49/ba33b/4b9b2/373dc/d6bfc/9e97c/afb7f"
+	if pathKey.PathName != expectedPathName {
+		t.Errorf("have %s wants %s", pathKey.PathName, expectedPathName)
+	}
+	if pathKey.FileName == expectedFileame {
+		t.Errorf("have %s wants %s", pathKey.FileName, expectedFileame)
+	}
+}
+
 func TestStorage(t *testing.T) {
 	opts := StorageOpts{
-		TransFormFunc: DefaultPathTransformFunc,
+		TransFormFunc: CASPathTransformFunc,
 	}
 	s := NewStorage(opts)
-	data := bytes.NewReader([]byte("some image bytes"))
-	if err := s.writeStream("myspecialimage", data); err != nil {
+	key := "momsspecials"
+	data := []byte("some image bytes")
+	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+		t.Error(err)
+	}
+
+	r, err := s.Read(key)
+	if err != nil {
+		t.Error(err)
+	}
+
+	b, _ := io.ReadAll(r)
+
+	fmt.Println(string(b))
+
+	if string(b) != string(data) {
+		t.Errorf("want %s have %s", data, b)
+	}
+	s.Delete(key)
+}
+
+func TestDelete(t *testing.T) {
+	opts := StorageOpts{
+		TransFormFunc: CASPathTransformFunc,
+	}
+
+	s := NewStorage(opts)
+
+	key := "momsspecials"
+	data := []byte("some image bytes")
+
+	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+		t.Error(err)
+	}
+
+	if err := s.Delete(key); err != nil {
 		t.Error(err)
 	}
 
