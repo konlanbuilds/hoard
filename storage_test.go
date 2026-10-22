@@ -7,65 +7,88 @@ import (
 	"testing"
 )
 
+func newStorage() *Storage {
+	options := StorageOpts{
+		TransFormFunc: CASPathTransformFunc,
+	}
+	return NewStorage(options)
+}
+
+func tearDown(t *testing.T, s *Storage) {
+	if err := s.Clear(); err != nil {
+		t.Error(err)
+	}
+}
 func TestTransFormFunc(t *testing.T) {
 	key := "momsbestpictures"
 	pathKey := CASPathTransformFunc(key)
-	expectedFileame := "52439f5e49ba33b4b9b2373dcd6bfc9e97cafb7f"
+	expectedFileName := "52439f5e49ba33b4b9b2373dcd6bfc9e97cafb7f"
 	expectedPathName := "52439/f5e49/ba33b/4b9b2/373dc/d6bfc/9e97c/afb7f"
 	if pathKey.PathName != expectedPathName {
 		t.Errorf("have %s wants %s", pathKey.PathName, expectedPathName)
 	}
-	if pathKey.FileName == expectedFileame {
-		t.Errorf("have %s wants %s", pathKey.FileName, expectedFileame)
+	if pathKey.FileName != expectedFileName {
+		t.Errorf("have %s wants %s", pathKey.FileName, expectedFileName)
 	}
 }
 
 func TestStorage(t *testing.T) {
-	opts := StorageOpts{
-		TransFormFunc: CASPathTransformFunc,
-	}
-	s := NewStorage(opts)
-	key := "momsspecials"
-	data := []byte("some image bytes")
-	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
-		t.Error(err)
-	}
+	s := newStorage()
+	defer tearDown(t, s)
 
-	if ok := s.Has(key); !ok {
-		t.Errorf("expected to have key %s", key)
-	}
+	for i := 0; i < 15; i++ {
 
-	r, err := s.Read(key)
-	if err != nil {
-		t.Error(err)
-	}
+		key := fmt.Sprintf("foo_%d", i)
 
-	b, _ := io.ReadAll(r)
+		data := []byte("some image bytes")
+		if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+			t.Error(err)
+		}
 
-	fmt.Println(string(b))
+		if ok := s.Has(key); !ok {
+			t.Errorf("expected to have key %s", key)
+		}
 
-	if string(b) != string(data) {
-		t.Errorf("want %s have %s", data, b)
-	}
-	s.Delete(key)
-}
+		r, err := s.Read(key)
+		if err != nil {
+			t.Error(err)
+		}
 
-func TestStorageDelete(t *testing.T) {
-	opts := StorageOpts{
-		TransFormFunc: CASPathTransformFunc,
-	}
+		b, _ := io.ReadAll(r)
 
-	s := NewStorage(opts)
+		fmt.Println(string(b))
 
-	key := "momsspecials"
-	data := []byte("some image bytes")
+		if string(b) != string(data) {
+			t.Errorf("want %s have %s", data, b)
+		}
+		if err := s.Delete(key); err != nil {
+			t.Error(err)
+		}
 
-	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
-		t.Error(err)
-	}
+		if ok := s.Has(key); ok {
+			t.Errorf("Expected to NOT have key %s", key)
+		}
 
-	if err := s.Delete(key); err != nil {
-		t.Error(err)
 	}
 
 }
+
+// func TestStorageDelete(t *testing.T) {
+// 	opts := StorageOpts{
+// 		TransFormFunc: CASPathTransformFunc,
+// 	}
+
+// 	s := NewStorage(opts)
+
+// 	key := "momsspecials"
+// 	data := []byte("some image bytes")
+
+// 	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	if err := s.Delete(key); err != nil {
+// 		t.Error(err)
+// 	}
+
+// }

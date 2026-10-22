@@ -150,3 +150,7 @@ func (s *Storage) Delete(key string) error {
 
 	return os.RemoveAll(firstpathNameRoot)
 }
+
+func (s *Storage) Clear() error {
+	return os.RemoveAll(s.Root)
+}
