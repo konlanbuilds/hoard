@@ -31,6 +31,10 @@ func TestStorage(t *testing.T) {
 		t.Error(err)
 	}
 
+	if ok := s.Has(key); !ok {
+		t.Errorf("expected to have key %s", key)
+	}
+
 	r, err := s.Read(key)
 	if err != nil {
 		t.Error(err)
@@ -46,7 +50,7 @@ func TestStorage(t *testing.T) {
 	s.Delete(key)
 }
 
-func TestDelete(t *testing.T) {
+func TestStorageDelete(t *testing.T) {
 	opts := StorageOpts{
 		TransFormFunc: CASPathTransformFunc,
 	}
