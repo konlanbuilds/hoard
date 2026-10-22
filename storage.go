@@ -82,6 +82,10 @@ func NewStorage(opts StorageOpts) *Storage {
 	}
 }
 
+func (s *Storage) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
+}
+
 func (s *Storage) writeStream(key string, r io.Reader) error {
 	pathKey := s.TransFormFunc(key)
 	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
@@ -132,11 +136,7 @@ func (s *Storage) Has(key string) bool {
 	fullPathRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 
 	_, err := os.Stat(fullPathRoot)
-	if errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-
-	return true
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 func (s *Storage) Delete(key string) error {
@@ -144,7 +144,6 @@ func (s *Storage) Delete(key string) error {
 
 	defer func() {
 		log.Printf("deleted [%s] from disk", pathKey.FileName)
-
 	}()
 	firstpathNameRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.firstPathName())
 
