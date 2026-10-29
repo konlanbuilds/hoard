@@ -41,7 +41,7 @@ func NewFileServer(opts FileServerOptions) *FileServer {
 	}
 }
 
-func (fs *FileServer) broadcast(msg *Message) error {
+func (fs *FileServer) stream(msg *Message) error {
 	peers := []io.Writer{}
 	for _, peer := range fs.peers {
 		peers = append(peers, peer)
@@ -49,6 +49,21 @@ func (fs *FileServer) broadcast(msg *Message) error {
 
 	mulWriter := io.MultiWriter(peers...)
 	return gob.NewEncoder(mulWriter).Encode(msg)
+}
+
+func (fs *FileServer) broadcast(msg *Message) error {
+	buf := new(bytes.Buffer)
+	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
+		return err
+	}
+
+	for _, peer := range fs.peers {
+		if err := peer.Send(buf.Bytes()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type Message struct {
@@ -80,18 +95,13 @@ func (fs *FileServer) StoreData(key string, r io.Reader) error {
 		},
 	}
 
-	messageBuf := new(bytes.Buffer)
-	if err := gob.NewEncoder(messageBuf).Encode(msg); err != nil {
+	if err := fs.broadcast(&msg); err != nil {
 		return err
 	}
 
-	for _, peer := range fs.peers {
-		if err := peer.Send(messageBuf.Bytes()); err != nil {
-			return err
-		}
-	}
-
 	time.Sleep(time.Second * 3)
+
+	// TODO: (@konlanbuilds) use a multiwriter here
 	for _, peer := range fs.peers {
 		n, err := io.Copy(peer, fileBuffer)
 		if err != nil {
