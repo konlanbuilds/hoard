@@ -41,7 +41,7 @@ func TestStorage(t *testing.T) {
 		key := fmt.Sprintf("foo_%d", i)
 
 		data := []byte("some image bytes")
-		if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+		if _, err := s.writeStream(key, bytes.NewReader(data)); err != nil {
 			t.Error(err)
 		}
 

@@ -38,10 +38,10 @@ func main() {
 		log.Fatal(fs1.Start())
 	}()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	go fs2.Start()
-	time.Sleep(1 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	data := bytes.NewReader([]byte("Large data file!\n"))
 

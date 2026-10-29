@@ -82,33 +82,30 @@ func NewStorage(opts StorageOpts) *Storage {
 	}
 }
 
-func (s *Storage) Write(key string, r io.Reader) error {
+func (s *Storage) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
-func (s *Storage) writeStream(key string, r io.Reader) error {
+func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 	pathKey := s.TransFormFunc(key)
 	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
 	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
-		return err
+		return 0, err
 	}
 
-	fullPath := pathKey.FullPath()
 	fullPathRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 
 	f, err := os.Create(fullPathRoot)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	n, err := io.Copy(f, r)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	log.Printf("written (%d) bytes to disk: %s", n, fullPath)
-
-	return nil
+	return n, nil
 }
 
 func (s *Storage) Read(key string) (io.Reader, error) {
