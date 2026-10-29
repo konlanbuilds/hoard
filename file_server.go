@@ -75,6 +75,31 @@ type MessageStoreFile struct {
 	Size int64
 }
 
+type MessageGetFile struct {
+	Key string
+}
+
+func (fs *FileServer) GetData(key string) (io.Reader, error) {
+	if fs.storage.Has(key) {
+		return fs.storage.Read(key)
+	}
+
+	fmt.Printf("File (%s) not found locally, fetching from network...\n", key)
+
+	message := Message{
+		Payload: MessageGetFile{
+			Key: key,
+		},
+	}
+
+	if err := fs.broadcast(&message); err != nil {
+		return nil, err
+	}
+
+	select {}
+	return nil, nil
+}
+
 func (fs *FileServer) StoreData(key string, r io.Reader) error {
 	// 1. Store  file to disk
 	// 2.Broadcast file to all known peers on the network
@@ -154,8 +179,15 @@ func (fs *FileServer) handleMessage(from string, message *Message) error {
 	switch v := message.Payload.(type) {
 	case MessageStoreFile:
 		return fs.handleMessageStoreFile(from, v)
+	case MessageGetFile:
+		return fs.handleMessageGetFile(from, v)
 	}
 
+	return nil
+}
+
+func (fs *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error {
+	fmt.Println("need to get a file from disk and send it over the network")
 	return nil
 }
 
