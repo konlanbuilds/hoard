@@ -14,6 +14,7 @@ import (
 )
 
 type FileServerOptions struct {
+	EncKey            []byte
 	StorageRoot       string
 	PathTransformFunc PathTransformFunc
 	Transport         p2p.Transport
@@ -128,6 +129,7 @@ func (fs *FileServer) StoreData(key string, r io.Reader) error {
 		fileBuffer = new(bytes.Buffer)
 		tee        = io.TeeReader(r, fileBuffer)
 	)
+
 	size, err := fs.storage.Write(key, tee)
 	if err != nil {
 		return err
@@ -136,7 +138,7 @@ func (fs *FileServer) StoreData(key string, r io.Reader) error {
 	msg := Message{
 		Payload: MessageStoreFile{
 			Key:  key,
-			Size: size,
+			Size: size + 16,
 		},
 	}
 
@@ -144,15 +146,19 @@ func (fs *FileServer) StoreData(key string, r io.Reader) error {
 		return err
 	}
 
-	time.Sleep(time.Millisecond * 2)
+	time.Sleep(time.Millisecond * 5)
 
 	// TODO: (@konlanbuilds) use a multiwriter here
 	for _, peer := range fs.peers {
 		peer.Send([]byte{p2p.IncomingStream})
-		n, err := io.Copy(peer, fileBuffer)
+		n, err := copyEncrypt(fs.EncKey, fileBuffer, peer)
 		if err != nil {
 			return err
 		}
+		// n, err := io.Copy(peer, fileBuffer)
+		// if err != nil {
+		// 	return err
+		// }
 
 		fmt.Println("Received and written bytes to disk: ", n)
 	}
