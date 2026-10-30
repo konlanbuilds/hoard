@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -44,22 +44,19 @@ func main() {
 	go fs2.Start()
 	time.Sleep(2 * time.Second)
 
-	for i := 0; i < 10; i++ {
-		data := bytes.NewReader([]byte("Large data file!\n"))
-		fs2.StoreData(fmt.Sprintf("mydata_%d", i), data)
-		time.Sleep(time.Microsecond * 5)
+	// data := bytes.NewReader([]byte("Large data file!\n"))
+	// fs2.StoreData("CoolPicture.jpg", data)
+	// time.Sleep(time.Microsecond * 5)
+
+	r, err := fs2.GetData("CoolPicture.jpg")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// r, err := fs2.GetData("randomkey")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	b, err := io.ReadAll(r)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// b, err := io.ReadAll(r)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// fmt.Println(string(b))
-	select {}
+	fmt.Println(string(b))
 }

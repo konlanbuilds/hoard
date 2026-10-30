@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -108,24 +107,25 @@ func (s *Storage) writeStream(key string, r io.Reader) (int64, error) {
 	return n, nil
 }
 
-func (s *Storage) Read(key string) (io.Reader, error) {
-	f, err := s.readStream(key)
-	if err != nil {
-		return nil, err
-	}
-
-	defer f.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, f)
-
-	return buf, err
+func (s *Storage) Read(key string) (int64, io.Reader, error) {
+	return s.readStream(key)
 }
 
-func (s *Storage) readStream(key string) (io.ReadCloser, error) {
+func (s *Storage) readStream(key string) (int64, io.ReadCloser, error) {
 	pathKey := s.TransFormFunc(key)
 	fullPathRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
-	return os.Open(fullPathRoot)
+
+	file, err := os.Open(fullPathRoot)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	fi, err := file.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return fi.Size(), file, nil
 }
 
 func (s *Storage) Has(key string) bool {

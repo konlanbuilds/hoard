@@ -1,4 +1,4 @@
 bin/fs
 ./bin/
 
-./hoard/
+/hoard/
