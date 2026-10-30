@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"time"
 
@@ -39,24 +39,27 @@ func main() {
 		log.Fatal(fs1.Start())
 	}()
 
-	time.Sleep(4 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	go fs2.Start()
-	time.Sleep(4 * time.Second)
+	time.Sleep(2 * time.Second)
 
-	// data := bytes.NewReader([]byte("Large data file!\n"))
-
-	// fs2.StoreData("mydata", data)
-	r, err := fs2.GetData("randomkey") 
-	if err != nil {
-		log.Fatal(err)
+	for i := 0; i < 10; i++ {
+		data := bytes.NewReader([]byte("Large data file!\n"))
+		fs2.StoreData(fmt.Sprintf("mydata_%d", i), data)
+		time.Sleep(time.Microsecond * 5)
 	}
 
-	b, err := io.ReadAll(r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// r, err := fs2.GetData("randomkey")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	fmt.Println(string(b))
+	// b, err := io.ReadAll(r)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Println(string(b))
 	select {}
 }
