@@ -43,16 +43,6 @@ func NewFileServer(opts FileServerOptions) *FileServer {
 	}
 }
 
-func (fs *FileServer) stream(msg *Message) error {
-	peers := []io.Writer{}
-	for _, peer := range fs.peers {
-		peers = append(peers, peer)
-	}
-
-	mulWriter := io.MultiWriter(peers...)
-	return gob.NewEncoder(mulWriter).Encode(msg)
-}
-
 func (fs *FileServer) broadcast(msg *Message) error {
 	buf := new(bytes.Buffer)
 	if err := gob.NewEncoder(buf).Encode(msg); err != nil {
@@ -93,7 +83,7 @@ func (fs *FileServer) GetData(key string) (io.Reader, error) {
 
 	message := Message{
 		Payload: MessageGetFile{
-			Key: key,
+			Key: hashKey(key),
 		},
 	}
 
@@ -108,7 +98,8 @@ func (fs *FileServer) GetData(key string) (io.Reader, error) {
 		// read from the connection, to prevent it from hanging
 		var fileSize int64
 		binary.Read(peer, binary.LittleEndian, &fileSize)
-		n, err := fs.storage.Write(key, io.LimitReader(peer, fileSize))
+
+		n, err := fs.storage.WriteDecrypt(fs.EncKey, key, io.LimitReader(peer, fileSize))
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +128,7 @@ func (fs *FileServer) StoreData(key string, r io.Reader) error {
 
 	msg := Message{
 		Payload: MessageStoreFile{
-			Key:  key,
+			Key:  hashKey(key),
 			Size: size + 16,
 		},
 	}
@@ -148,20 +139,20 @@ func (fs *FileServer) StoreData(key string, r io.Reader) error {
 
 	time.Sleep(time.Millisecond * 5)
 
-	// TODO: (@konlanbuilds) use a multiwriter here
+	peers := []io.Writer{}
 	for _, peer := range fs.peers {
-		peer.Send([]byte{p2p.IncomingStream})
-		n, err := copyEncrypt(fs.EncKey, fileBuffer, peer)
-		if err != nil {
-			return err
-		}
-		// n, err := io.Copy(peer, fileBuffer)
-		// if err != nil {
-		// 	return err
-		// }
-
-		fmt.Println("Received and written bytes to disk: ", n)
+		peers = append(peers, peer)
 	}
+
+	mulWriter := io.MultiWriter(peers...)
+	mulWriter.Write([]byte{p2p.IncomingStream})
+	n, err := copyEncrypt(fs.EncKey, fileBuffer, mulWriter)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("[%s] received and written (%d) bytes to disk: ", fs.Transport.Addr(), n)
+
 	return nil
 }
 
@@ -270,7 +261,7 @@ func (fs *FileServer) bootstrapNetwork() error {
 			continue
 		}
 		go func(addr string) {
-			fmt.Println("Attempting to connect with remote: ", addr)
+			fmt.Printf("[%s] attempting to connect with remote %s\n", fs.Transport.Addr(), addr)
 			if err := fs.Transport.Dial(addr); err != nil {
 				log.Println("dial error: ", err)
 			}
@@ -281,6 +272,7 @@ func (fs *FileServer) bootstrapNetwork() error {
 }
 
 func (fs *FileServer) Start() error {
+	fmt.Printf("[%s] starting file server...\n", fs.Transport.Addr())
 	if err := fs.Transport.ListenAndAccept(); err != nil {
 		return err
 	}
