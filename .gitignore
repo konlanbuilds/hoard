@@ -1,4 +1,5 @@
 bin/fs
 ./bin/
 
-/hoard/
+/hoard_:3000_network/
+/hoard_:4000_network/
