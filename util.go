@@ -8,7 +8,7 @@ import (
 )
 
 func hashKey(key string) string {
-	hash := sha256.New().Sum([]byte(key))
+	hash := sha256.Sum256([]byte(key))
 
 	return hex.EncodeToString(hash[:])
 }

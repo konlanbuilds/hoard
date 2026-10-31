@@ -50,9 +50,10 @@ func main() {
 		key := fmt.Sprintf("picture_%d.png", i)
 		dat := fmt.Sprintf("Large data file %d\n", i)
 		data := bytes.NewReader([]byte(dat))
-		fs3.StoreData(key, data)
+		id := fs3.ID
+		fs3.StoreData(id, key, data)
 
-		if err := fs3.storage.Delete(key); err != nil {
+		if err := fs3.storage.Delete(fs3.ID, key); err != nil {
 			log.Fatal(err)
 		}
 
