@@ -1,10 +1,9 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/konlanbuilds/hoard/p2p"
@@ -46,27 +45,44 @@ func main() {
 	go fs3.Start()
 	time.Sleep(2 * time.Second)
 
-	for i := 0; i < 20; i++ {
-		key := fmt.Sprintf("picture_%d.png", i)
-		dat := fmt.Sprintf("Large data file %d\n", i)
-		data := bytes.NewReader([]byte(dat))
-		id := fs3.ID
-		fs3.StoreData(id, key, data)
+	const key = "test_file.mp4"
 
-		if err := fs3.storage.Delete(fs3.ID, key); err != nil {
-			log.Fatal(err)
-		}
-
-		r, err := fs3.GetData(key)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		b, err := io.ReadAll(r)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		fmt.Println(string(b))
+	file, err := os.Open(key)
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := fs3.StoreData(fs3.ID, key, file); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := fs3.storage.Delete(fs3.ID, key); err != nil {
+		log.Fatal(err)
+	}
+
+	r, err := fs3.GetData(key)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if closer, ok := r.(io.Closer); ok {
+			closer.Close()
+		}
+	}()
+
+	recoveredSize, err := io.Copy(io.Discard, r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if recoveredSize != info.Size() {
+		log.Fatalf("recovered file size mismatch: got %d bytes, want %d", recoveredSize, info.Size())
+	}
+
+	log.Printf("successfully replicated and recovered %s (%d bytes)", key, recoveredSize)
 }

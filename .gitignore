@@ -2,3 +2,4 @@ bin/fs
 ./bin/
 
 /hoard_:*
+test_file.mp4
